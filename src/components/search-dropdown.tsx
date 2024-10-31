@@ -1,6 +1,8 @@
 "use client";
 
+
 import { useEffect, useState, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { X } from "lucide-react";
@@ -15,35 +17,21 @@ type SearchResult = Product & { href: string };
 
 export function SearchDropdownComponent() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [filteredItems, setFilteredItems] = useState<SearchResult[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const [isLoading, setIsLoading] = useState(false);
+
+  const { data: filteredItems, isLoading } = useQuery({
+    queryKey: ["search", searchTerm],
+    initialData: [],
+    queryFn: async ({ signal }) => fetch(`/api/search?q=${searchTerm}`, { signal }).then(async (results) => {
+        return await results.json() as ProductSearchResult;
+      }),
+    staleTime: Infinity,
+  });
 
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // we don't need react query, we have react query at home
-  // react query at home:
-  useEffect(() => {
-    if (searchTerm.length === 0) {
-      setFilteredItems([]);
-    } else {
-      setIsLoading(true);
-
-      const searchedFor = searchTerm;
-      fetch(`/api/search?q=${searchTerm}`).then(async (results) => {
-        const currentSearchTerm = inputRef.current?.value;
-        if (currentSearchTerm !== searchedFor) {
-          return;
-        }
-        const json = await results.json();
-        setIsLoading(false);
-        setFilteredItems(json as ProductSearchResult);
-      });
-    }
-  }, [searchTerm, inputRef]);
 
   const params = useParams();
   useEffect(() => {
